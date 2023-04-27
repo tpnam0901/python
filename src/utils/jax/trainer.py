@@ -28,14 +28,14 @@ class TrainStateWithBatchStats(train_state.TrainState):
 class FlaxTrainer(ABC, nn.Module):
     log_dir: str = "logs"
 
-    def predict(self, inputs: jnp.ndarray) -> jnp.ndarray:
+    def predict(self, inputs: Union[jnp.ndarray, Dict, List]) -> Union[jnp.ndarray, Dict, List]:
         """
 
         Args:
-            inputs (jnp.ndarray): _description_
+            inputs (Union[jnp.ndarray, Dict, List]): Inputs to the model
 
         Returns:
-            jnp.ndarray: _description_
+            Union[jnp.ndarray, Dict, List]: Predictions
         """
 
         # Use state.params to get the parameters of the model if available
@@ -79,7 +79,7 @@ class FlaxTrainer(ABC, nn.Module):
             for batch in train_data:
                 # Training step
                 train_log = self.train_step(batch)
-
+                assert isinstance(train_log, dict), "train_step should return a dict."
                 # Add logs, update progress bar
                 postfix = ""
                 for key, value in train_log.items():
@@ -103,6 +103,7 @@ class FlaxTrainer(ABC, nn.Module):
             logger.info("Performing validation...")
             # First pass to retrieve keys
             val_log = self.test_step(batch)
+            assert isinstance(val_log, dict), "val_step should return a dict."
             eval_logs = {key: [] for key in val_log.keys()}
 
             # Perform validation
