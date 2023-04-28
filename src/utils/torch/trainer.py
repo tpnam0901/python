@@ -57,6 +57,7 @@ class TorchTrainer(ABC, nn.Module):
         if logger is None:
             logger = logging
 
+        epoch_log = {}
         with tqdm.tqdm(total=len(train_data)) as pbar:
             pbar.update(1)
             for batch in train_data:
@@ -67,6 +68,9 @@ class TorchTrainer(ABC, nn.Module):
                 # Add logs, update progress bar
                 postfix = ""
                 for key, value in train_log.items():
+                    e_val = epoch_log.get(key, [])
+                    e_val.append(value)
+                    epoch_log.update({key: e_val})
                     postfix += f"{key}: {value:.4f} "
                     mlflow.log_metric(f"train_{key}", value)
                 pbar.set_description(postfix)
@@ -82,7 +86,8 @@ class TorchTrainer(ABC, nn.Module):
                 if callbacks is not None:
                     for callback in callbacks:
                         callback(self, step, epoch, train_log, isValPhase=False)
-
+        for key, value in epoch_log.items():
+            logger.info(f"Epoch {epoch} - {key}: {np.mean(value):.4f}")
         if eval_data is not None:
             self.eval()
             logger.info("Performing validation...")
