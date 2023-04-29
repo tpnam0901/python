@@ -74,7 +74,8 @@ class FlaxTrainer(ABC, nn.Module):
         if logger is None:
             logger = logging
 
-        with tqdm.tqdm(total=len(train_data)) as pbar:
+        epoch_log = {}
+        with tqdm.tqdm(total=len(train_data), ascii=True) as pbar:
             pbar.update(1)
             for batch in train_data:
                 # Training step
@@ -83,6 +84,9 @@ class FlaxTrainer(ABC, nn.Module):
                 # Add logs, update progress bar
                 postfix = ""
                 for key, value in train_log.items():
+                    e_val = epoch_log.get(key, [])
+                    e_val.append(value)
+                    epoch_log.update({key: e_val})
                     postfix += f"{key}: {value:.4f} "
                     mlflow.log_metric(f"train_{key}", value)
                 pbar.set_description(postfix)
@@ -98,7 +102,8 @@ class FlaxTrainer(ABC, nn.Module):
                 if callbacks is not None:
                     for callback in callbacks:
                         callback(self, self.state, self.state.step, epoch, train_log, isValPhase=False)
-
+        for key, value in epoch_log.items():
+            logger.info(f"Epoch {epoch} - {key}: {np.mean(value):.4f}")
         if eval_data is not None:
             logger.info("Performing validation...")
             # First pass to retrieve keys
@@ -107,7 +112,7 @@ class FlaxTrainer(ABC, nn.Module):
             eval_logs = {key: [] for key in val_log.keys()}
 
             # Perform validation
-            for batch in tqdm.tqdm(eval_data):
+            for batch in tqdm.tqdm(eval_data, ascii=True):
                 val_log = self.test_step(batch)
                 for key, value in val_log.items():
                     eval_logs[key].append(value)
@@ -143,7 +148,7 @@ class FlaxTrainer(ABC, nn.Module):
             logger = logging
         test_logs = {}
 
-        for batch in tqdm.tqdm(test_data):
+        for batch in tqdm.tqdm(test_data, ascii=True):
             # Perform validation
             test_log = self.test_step(batch)
             for key, value in test_log.items():

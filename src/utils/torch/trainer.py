@@ -58,7 +58,7 @@ class TorchTrainer(ABC, nn.Module):
             logger = logging
 
         epoch_log = {}
-        with tqdm.tqdm(total=len(train_data)) as pbar:
+        with tqdm.tqdm(total=len(train_data), ascii=True) as pbar:
             pbar.update(1)
             for batch in train_data:
                 # Training step
@@ -97,7 +97,7 @@ class TorchTrainer(ABC, nn.Module):
             eval_logs = {key: [] for key in val_log.keys()}
 
             # Perform validation
-            for batch in tqdm.tqdm(eval_data):
+            for batch in tqdm.tqdm(eval_data, ascii=True):
                 val_log = self.test_step(batch)
                 for key, value in val_log.items():
                     eval_logs[key].append(value)
@@ -135,7 +135,7 @@ class TorchTrainer(ABC, nn.Module):
             logger = logging
         test_logs = {}
 
-        for batch in tqdm.tqdm(test_data):
+        for batch in tqdm.tqdm(test_data, ascii=True):
             # Perform validation
             test_log = self.test_step(batch)
             for key, value in test_log.items():
