@@ -199,17 +199,22 @@ class TorchTrainer(ABC, nn.Module):
         """
         self.load_state_dict(torch.load(path), map_location=device)
 
-    def compile(self, optimizer: Union[str, torch.optim.Optimizer] = "sgd"):
+    def compile(
+        self,
+        optimizer: Union[str, torch.optim.Optimizer] = "sgd",
+        scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+    ):
         """Compile the model with the given optimizer.
 
         Args:
             optimizer (Union[str, torch.optim.Optimizer], optional): The optimizer to use. Defaults to "sgd".
+            scheduler (torch.optim.lr_scheduler._LRScheduler, optional): The scheduler to use. Defaults to None.
 
         Raises:
             AttributeError: This method must be called after the model is built.
             NotImplementedError: The given optimizer is not implemented.
         """
-        assert isinstance(optimizer, (str, torch.optim.Optimizer)), "Optimizer must be a string or optax object"
+        assert isinstance(optimizer, (str, torch.optim.Optimizer)), "Optimizer must be a string or a torch optimizer."
 
         if type(optimizer) == str:
             available_optimizers = {
