@@ -271,7 +271,7 @@ class TorchTrainer(ABC, nn.Module):
                 logger.info(f"Epoch {epoch}/{epochs}")
                 global_step = self.train_epoch(global_step, epoch, train_data, eval_data, logger, callbacks=callbacks)
                 if test_data is not None:
-                    self.evaluate(test_data, callbacks=callbacks)
+                    self.evaluate(test_data)
 
     @abstractmethod
     def train_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
