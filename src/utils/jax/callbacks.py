@@ -1,4 +1,5 @@
 import logging
+import os
 from abc import ABC, abstractmethod
 from typing import Dict
 
@@ -57,7 +58,8 @@ class CheckpointsCallback(Callback):
         if save_best_val:
             logging.warning(
                 "When save_best_val is True, please make sure that you pass the validation data to the trainer.fit() method.\n\
-                            Otherwise, the best model will not be saved."
+                            Otherwise, the best model will not be saved.\n\
+                            The model will save the lowest validation value if the metric starts with 'loss' and the highest value otherwise."
             )
             self.best_val = {}
 
@@ -89,4 +91,22 @@ class CheckpointsCallback(Callback):
                 trainer.save(self.checkpoint_dir, global_step, self.max_to_keep)
 
         elif isValPhase and self.save_best_val:
-            raise NotImplementedError("TODO: save best model based on the validation")
+            for k, v in logs.items():
+                if k not in self.best_val:
+                    self.best_val[k] = v
+                    logging.info(f"Saving best model based on {k} = {v}")
+                    os.makedirs(self.checkpoint_dir, exist_ok=True)
+                    trainer.save(os.path.join(self.checkpoint_dir, "best_{}".format(k)), global_step, 1)
+                else:
+                    if k.startswith("loss"):
+                        if v < self.best_val[k]:
+                            self.best_val[k] = v
+                            logging.info(f"Saving best model based on {k} = {v}")
+                            os.makedirs(self.checkpoint_dir, exist_ok=True)
+                            trainer.save(os.path.join(self.checkpoint_dir, "best_{}".format(k)), global_step, 1)
+                    else:
+                        if v > self.best_val[k]:
+                            self.best_val[k] = v
+                            logging.info(f"Saving best model based on {k} = {v}")
+                            os.makedirs(self.checkpoint_dir, exist_ok=True)
+                            trainer.save(os.path.join(self.checkpoint_dir, "best_{}".format(k)), global_step, 1)
