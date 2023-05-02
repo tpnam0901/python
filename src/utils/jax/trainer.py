@@ -296,7 +296,7 @@ class FlaxTrainer(ABC, nn.Module):
                 logger.info(f"Epoch {epoch}/{epochs}")
                 self.train_epoch(epoch, train_data, eval_data, logger, callbacks=callbacks)
                 if test_data is not None:
-                    self.evaluate(test_data, callbacks=callbacks)
+                    self.evaluate(test_data)
 
     @abstractmethod
     def train_step(self, batch: Dict[str, jnp.ndarray]) -> Dict[str, jnp.ndarray]:
