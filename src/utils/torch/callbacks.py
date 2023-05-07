@@ -1,11 +1,8 @@
 import logging
 import os
+import shutil
 from abc import ABC, abstractmethod
 from typing import Dict
-
-from flax.training.train_state import TrainState
-
-# from utils.torch.trainer import TorchTrainer
 
 
 class Callback(ABC):
@@ -40,7 +37,8 @@ class CheckpointsCallback(Callback):
         self,
         checkpoint_dir: str,
         save_freq: int = 1000,
-        keep_one_only: bool = False,
+        max_to_keep: int = 3,
+        save_best_val: bool = False,
     ):
         """Callback to save checkpoints during training.
 
@@ -48,11 +46,22 @@ class CheckpointsCallback(Callback):
             checkpoint_dir (str): Path to the directory where checkpoints will be saved.
             save_freq (int, optional): The frequency at which checkpoints will be saved. Defaults to 1000.
             keep_one_only (bool, optional): Whether to keep only the last checkpoint. Defaults to True.
+            save_best_val (bool, optional): Whether to save the best model based on the validation loss. Defaults to False.
         """
         self.checkpoint_dir = checkpoint_dir
         os.makedirs(self.checkpoint_dir, exist_ok=True)
         self.save_freq = save_freq
-        self.keep_one_only = keep_one_only
+        self.max_to_keep = max_to_keep
+        self.keep = []
+
+        self.save_best_val = save_best_val
+        if save_best_val:
+            logging.warning(
+                "When save_best_val is True, please make sure that you pass the validation data to the trainer.fit() method.\n\
+                            Otherwise, the best model will not be saved.\n\
+                            The model will save the lowest validation value if the metric starts with 'loss' and the highest value otherwise."
+            )
+            self.best_val = {}
 
     def __call__(
         self,
@@ -78,6 +87,30 @@ class CheckpointsCallback(Callback):
         """
         if not isValPhase:
             if global_step % self.save_freq == 0:
-                if self.keep_one_only:
-                    global_step = ""
-                trainer.save(self.checkpoint_dir, global_step)
+                ckpt_path = trainer.save(self.checkpoint_dir, global_step)
+                self.keep.append(ckpt_path)
+                if len(self.keep) > self.max_to_keep:
+                    logging.info(f"Deleting checkpoint {self.keep[0]}")
+                    ckpt_to_delete = self.keep.pop(0)
+                    shutil.rmtree(ckpt_to_delete)
+
+        elif isValPhase and self.save_best_val:
+            for k, v in logs.items():
+                if k not in self.best_val:
+                    self.best_val[k] = v
+                    logging.info(f"Saving best model based on {k} = {v}")
+                    os.makedirs(os.path.join(self.checkpoint_dir, "best_{}".format(k)), exist_ok=True)
+                    trainer.save(os.path.join(self.checkpoint_dir, "best_{}".format(k)), 0)
+                else:
+                    if k.startswith("loss"):
+                        if v < self.best_val[k]:
+                            self.best_val[k] = v
+                            logging.info(f"Saving best model based on {k} = {v}")
+                            os.makedirs(os.path.join(self.checkpoint_dir, "best_{}".format(k)), exist_ok=True)
+                            trainer.save(os.path.join(self.checkpoint_dir, "best_{}".format(k)), 0)
+                    else:
+                        if v > self.best_val[k]:
+                            self.best_val[k] = v
+                            logging.info(f"Saving best model based on {k} = {v}")
+                            os.makedirs(os.path.join(self.checkpoint_dir, "best_{}".format(k)), exist_ok=True)
+                            trainer.save(os.path.join(self.checkpoint_dir, "best_{}".format(k)), 0)
