@@ -160,14 +160,18 @@ class TorchTrainer(ABC, nn.Module):
         """
         summary(self, input_shapes)
 
-    def save(self, path: str, step=None):
+    def save(self, path: str, step=None) -> str:
         """Save entire model to a checkpoint directory.
 
         Args:
             path (str): Path to the checkpoint directory.
             step (int, optional): Current step. Defaults to None.
+        Returns:
+            str: Path to the checkpoint file.
         """
-        torch.save(self.network, os.path.join(path, "checkpoint_{}.pt".format(step)))
+        ckpt_path = os.path.join(path, "checkpoint_{}.pt".format(step))
+        torch.save(self.network, ckpt_path)
+        return ckpt_path
 
     @classmethod
     def load(self, path: str):
@@ -188,7 +192,9 @@ class TorchTrainer(ABC, nn.Module):
             path (str): Path to the checkpoint directory.
             step (int, optional): Current step. Defaults to None.
         """
-        torch.save(self.network.state_dict(), os.path.join(path, "checkpoint_{}.pt".format(step)))
+        ckpt_path = os.path.join(path, "checkpoint_{}.pt".format(step))
+        torch.save(self.network.state_dict(), ckpt_path)
+        return ckpt_path
 
     def load_weights(self, path: str, device: str = "cpu"):
         """Load the model weights from a checkpoint file.
