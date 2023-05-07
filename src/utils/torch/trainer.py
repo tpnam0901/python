@@ -167,7 +167,7 @@ class TorchTrainer(ABC, nn.Module):
             path (str): Path to the checkpoint directory.
             step (int, optional): Current step. Defaults to None.
         """
-        torch.save(self, os.path.join(path, "checkpoint_{}.pt".format(step)))
+        torch.save(self.network, os.path.join(path, "checkpoint_{}.pt".format(step)))
 
     @classmethod
     def load(self, path: str):
@@ -188,7 +188,7 @@ class TorchTrainer(ABC, nn.Module):
             path (str): Path to the checkpoint directory.
             step (int, optional): Current step. Defaults to None.
         """
-        torch.save(self.state_dict(), os.path.join(path, "checkpoint_{}.pt".format(step)))
+        torch.save(self.network.state_dict(), os.path.join(path, "checkpoint_{}.pt".format(step)))
 
     def load_weights(self, path: str, device: str = "cpu"):
         """Load the model weights from a checkpoint file.
@@ -197,7 +197,7 @@ class TorchTrainer(ABC, nn.Module):
             path (str): Path to the checkpoint file.
             device (str, optional): Device to load the weights on. Defaults to "cpu".
         """
-        self.load_state_dict(torch.load(path), map_location=device)
+        self.network.load_state_dict(torch.load(path), map_location=device)
 
     def compile(
         self,
@@ -215,14 +215,18 @@ class TorchTrainer(ABC, nn.Module):
             NotImplementedError: The given optimizer is not implemented.
         """
         assert isinstance(optimizer, (str, torch.optim.Optimizer)), "Optimizer must be a string or a torch optimizer."
+        try:
+            self.network
+        except AttributeError:
+            raise AttributeError("Please add your model to the self.network attribute in the constructor!")
 
         if type(optimizer) == str:
             available_optimizers = {
-                "sgd": optimizers.sgd(self.parameters(), learning_rate=0.01, momentum=0.9),
-                "adam": optimizers.adam(self.parameters(), learning_rate=0.01),
-                "rmsprop": optimizers.rmsprop(self.parameters(), learning_rate=0.01),
-                "adagrad": optimizers.adagrad(self.parameters(), learning_rate=0.01),
-                "adamw": optimizers.adamw(self.parameters(), learning_rate=0.01, weight_decay=0.01),
+                "sgd": optimizers.sgd(self.network.parameters(), learning_rate=0.01, momentum=0.9),
+                "adam": optimizers.adam(self.network.parameters(), learning_rate=0.01),
+                "rmsprop": optimizers.rmsprop(self.network.parameters(), learning_rate=0.01),
+                "adagrad": optimizers.adagrad(self.network.parameters(), learning_rate=0.01),
+                "adamw": optimizers.adamw(self.network.parameters(), learning_rate=0.01, weight_decay=0.01),
             }
             optimizer = available_optimizers.get(optimizer, None)
             if optimizer is None:
@@ -230,6 +234,7 @@ class TorchTrainer(ABC, nn.Module):
                     "{} is not found. List of available optimizers: {}".format(optimizer, list(available_optimizers.keys()))
                 )
         self.optimizer = optimizer
+        self.scheduler = scheduler
 
     def fit(
         self,
