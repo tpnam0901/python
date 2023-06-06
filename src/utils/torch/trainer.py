@@ -14,8 +14,10 @@ from torchsummary import summary
 from . import optimizers
 from .callbacks import Callback
 
-logging.getLogger().setLevel(logging.INFO)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 class TorchTrainer(ABC, nn.Module):
@@ -274,9 +276,12 @@ class TorchTrainer(ABC, nn.Module):
         self.log_dir = os.path.join(self.log_dir, "logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         os.makedirs(self.log_dir, exist_ok=True)
         # Logger
-        logging.basicConfig(filename=os.path.join(self.log_dir, "train.log"), filemode="a")
-        logging.getLogger().addHandler(logging.StreamHandler())
+        logging.getLogger().setLevel(logging.INFO)
+        file_handler = logging.FileHandler(os.path.join(self.log_dir, "train.log"))
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         logger = logging.getLogger("Training")
+        logger.addHandler(file_handler)
+        logger.addHandler(logging.StreamHandler())
         mlflow.set_tracking_uri(uri=f'file://{os.path.abspath(os.path.join(self.log_dir, "mlruns"))}')
         global_step = 0
         # Start training
