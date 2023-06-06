@@ -271,7 +271,7 @@ class TorchTrainer(ABC, nn.Module):
         assert isinstance(callbacks, list) or callbacks is None, "Callbacks must be a list of Callback objects"
 
         # Init mlflow
-        self.log_dir = os.path.join(self.log_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+        self.log_dir = os.path.join(self.log_dir, "logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         os.makedirs(self.log_dir, exist_ok=True)
         # Logger
         logging.basicConfig(filename=os.path.join(self.log_dir, "train.log"), filemode="a")
