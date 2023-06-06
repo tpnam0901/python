@@ -282,12 +282,13 @@ class FlaxTrainer(ABC, nn.Module):
 
         assert isinstance(callbacks, list) or callbacks is None, "Callbacks must be a list of Callback objects"
 
-        # Logger
-        logger = logging.getLogger("Training")
-
         # Init mlflow
         self.log_dir = os.path.join(self.log_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         os.makedirs(self.log_dir, exist_ok=True)
+        # Logger
+        logging.basicConfig(filename=os.path.join(self.log_dir, "train.log"), filemode="a")
+        logging.getLogger().addHandler(logging.StreamHandler())
+        logger = logging.getLogger("Training")
         mlflow.set_tracking_uri(uri=f'file://{os.path.abspath(os.path.join(self.log_dir, "mlruns"))}')
 
         # Start training

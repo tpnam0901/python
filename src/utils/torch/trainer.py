@@ -19,7 +19,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 
 
 class TorchTrainer(ABC, nn.Module):
-    log_dir: str = "logs"
+    def __init__(self, log_dir: str = "logs"):
+        super().__init__()
+        self.log_dir = log_dir
 
     def predict(self, inputs: Union[torch.Tensor, Dict, List]) -> Union[torch.Tensor, Dict, List]:
         """
@@ -85,7 +87,7 @@ class TorchTrainer(ABC, nn.Module):
                 # Callbacks
                 if callbacks is not None:
                     for callback in callbacks:
-                        callback(self, step, epoch, train_log, isValPhase=False)
+                        callback(self, step, epoch, train_log, isValPhase=False, logger=logger)
         for key, value in epoch_log.items():
             logger.info(f"Epoch {epoch} - {key}: {np.mean(value):.4f}")
         if eval_data is not None:
@@ -113,7 +115,7 @@ class TorchTrainer(ABC, nn.Module):
             if callbacks is not None:
                 eval_logs = {key: np.mean(value) for key, value in eval_logs.items()}
                 for callback in callbacks:
-                    callback(self, step, epoch, eval_logs, isValPhase=True)
+                    callback(self, step, epoch, eval_logs, isValPhase=True, logger=logger)
         return step
 
     def evaluate(
@@ -268,12 +270,13 @@ class TorchTrainer(ABC, nn.Module):
 
         assert isinstance(callbacks, list) or callbacks is None, "Callbacks must be a list of Callback objects"
 
-        # Logger
-        logger = logging.getLogger("Training")
-
         # Init mlflow
         self.log_dir = os.path.join(self.log_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         os.makedirs(self.log_dir, exist_ok=True)
+        # Logger
+        logging.basicConfig(filename=os.path.join(self.log_dir, "train.log"), filemode="a")
+        logging.getLogger().addHandler(logging.StreamHandler())
+        logger = logging.getLogger("Training")
         mlflow.set_tracking_uri(uri=f'file://{os.path.abspath(os.path.join(self.log_dir, "mlruns"))}')
         global_step = 0
         # Start training
