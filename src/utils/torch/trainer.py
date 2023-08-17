@@ -282,6 +282,7 @@ class TorchTrainer(ABC, nn.Module):
         logger = logging.getLogger("Training")
         logger.addHandler(file_handler)
         logger.addHandler(logging.StreamHandler())
+
         mlflow.set_tracking_uri(uri=f'file://{os.path.abspath(os.path.join(self.log_dir, "mlruns"))}')
         global_step = 0
         # Start training
@@ -289,8 +290,19 @@ class TorchTrainer(ABC, nn.Module):
             for epoch in range(1, epochs + 1):
                 logger.info(f"Epoch {epoch}/{epochs}")
                 global_step = self.train_epoch(global_step, epoch, train_data, eval_data, logger, callbacks=callbacks)
+                self.lr_scheduler(global_step, epoch)
                 if test_data is not None:
                     self.evaluate(test_data)
+
+    def lr_scheduler(self, step: int, epoch: int) -> None:
+        """Learning rate scheduler.
+
+        Args:
+            step (int): Current step.
+            epoch (int): Current epoch.
+        """
+        if self.scheduler is not None:
+            self.scheduler.step()
 
     @abstractmethod
     def train_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
