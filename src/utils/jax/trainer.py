@@ -17,10 +17,8 @@ from flax.training import checkpoints, train_state
 from . import optimizers
 from .callbacks import Callback
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
 class TrainStateWithBatchStats(train_state.TrainState):
@@ -284,16 +282,12 @@ class FlaxTrainer(ABC, nn.Module):
 
         assert isinstance(callbacks, list) or callbacks is None, "Callbacks must be a list of Callback objects"
 
-        # Init mlflow
-        self.log_dir = os.path.join(self.log_dir, "logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-        os.makedirs(self.log_dir, exist_ok=True)
         # Logger
-        logging.getLogger().setLevel(logging.INFO)
-        file_handler = logging.FileHandler(os.path.join(self.log_dir, "train.log"))
-        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         logger = logging.getLogger("Training")
-        logger.addHandler(file_handler)
-        logger.addHandler(logging.StreamHandler())
+
+        # Init mlflow
+        self.log_dir = os.path.join(self.log_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+        os.makedirs(self.log_dir, exist_ok=True)
         mlflow.set_tracking_uri(uri=f'file://{os.path.abspath(os.path.join(self.log_dir, "mlruns"))}')
 
         # Start training
