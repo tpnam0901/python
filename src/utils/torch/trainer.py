@@ -24,8 +24,8 @@ class TorchTrainer(ABC, nn.Module):
     def __init__(self, log_dir: str = "logs"):
         super().__init__()
         self.log_dir = log_dir
-        self.global_step = 0
-        self.start_epoch = 0
+        self.global_step = 1
+        self.start_epoch = 1
 
     def predict(self, inputs: Union[torch.Tensor, Dict, List]) -> Union[torch.Tensor, Dict, List]:
         """
@@ -70,7 +70,6 @@ class TorchTrainer(ABC, nn.Module):
                 # Training step
                 step += 1
                 train_log = self.train_step(batch)
-
                 assert isinstance(train_log, dict), "train_step should return a dict."
                 # Add logs, update progress bar
                 postfix = ""
@@ -326,8 +325,19 @@ class TorchTrainer(ABC, nn.Module):
             for epoch in range(self.start_epoch, epochs + 1):
                 logger.info(f"Epoch {epoch}/{epochs}")
                 global_step = self.train_epoch(global_step, epoch, train_data, eval_data, logger, callbacks=callbacks)
+                self.lr_scheduler(global_step, epoch)
                 if test_data is not None:
                     self.evaluate(test_data)
+
+    def lr_scheduler(self, step: int, epoch: int) -> None:
+        """Learning rate scheduler.
+
+        Args:
+            step (int): Current step.
+            epoch (int): Current epoch.
+        """
+        if self.scheduler is not None:
+            self.scheduler.step()
 
     @abstractmethod
     def train_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
