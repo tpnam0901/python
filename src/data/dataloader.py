@@ -1,75 +1,106 @@
-import random
-from abc import ABC, abstractmethod
-from typing import List
-
-import cv2
+import os
 import torch
-from keras.utils import Sequence
-from torch.utils.data import Dataset
+from typing import Tuple
+from torch.utils.data import DataLoader, Dataset
+from sklearn.model_selection import train_test_split
+
+from .utils import read_audio, pad_sequence
+from glob import glob
+import random
 
 
-class KerasSequence(ABC, Sequence):
+class BaseDataset(Dataset):
     def __init__(
         self,
-        data_list: List,
-        batch_size: int = 32,
-        shuffle: bool = True,
+        X,
+        y,
+        sample_rate=None,
+        max_audio_sec=5,
     ):
-        """Keras Sequence class for data loading
+        super(BaseDataset, self).__init__()
+        self.X = X
+        self.y = y
+        self.sample_rate = sample_rate
+        self.max_audio_sec = max_audio_sec
 
-        Args:
-            data (List): List of data
-            batch_size (int, optional): Defaults to 32.
-            shuffle (bool, optional): Whether to shuffle the data. Defaults to True.
-        """
-        self.data_list = data_list
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-
-    def __len__(self):
-        """Return the number of batches of this dataset."""
-        return len(self.data_list) // self.batch_size
-
-    def __getitem__(self, idx):
-        low = idx * self.batch_size
-        # Cap upper bound at array length; the last batch may be smaller
-        # if the total number of items is not a multiple of batch size.
-        high = min(low + self.batch_size, len(self.data_list))
-        batch = self.data_list[low:high]
-        return self.preprocess(batch)
-
-    @abstractmethod
-    def preprocess(self, batch):
-        """Preprocess the batch and return the processed batch"""
-        return batch
-
-    def on_epoch_end(self) -> None:
-        """
-        Updates indexes after each epoch
-        """
-        if self.shuffle:
-            random.shuffle(self.data_list)
-
-
-class TorchDataset(ABC, Dataset):
-    def __init__(self, x, y, im_size=(224, 224), transform=None, target_transform=None):
-        self.X = x
-        self.Y = y
-        self.im_size = im_size
-        self.transform = transform
-        self.target_transform = target_transform
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        waveform, sample_rate = read_audio(self.X[index], self.sample_rate)
+        max_audio_len = sample_rate * self.max_audio_sec
+        # random pick start point
+        len_waveform = max(waveform.shape)
+        if len_waveform > max_audio_len:
+            start = random.choice(range(len_waveform - max_audio_len))
+            waveform = waveform[:, start : start + max_audio_len]
+        label = torch.tensor(self.y[index])
+        return waveform, label
 
     def __len__(self):
         return len(self.X)
 
-    def __getitem__(self, idx):
-        image = cv2.cvtColor(cv2.imread(self.X[idx]), cv2.COLOR_BGR2RGB)
-        assert image is not None, f"Image not found at {self.X[idx]}"
-        image = cv2.resize(image, self.im_size, interpolation=cv2.INTER_AREA)
-        image = image / 255.0
-        label = torch.tensor(self.Y[idx])
-        if self.transform:
-            image = self.transform(image)
-        if self.target_transform:
-            label = self.target_transform(label)
-        return {"inputs": image.float(), "labels": label}
+
+def collate_fn_base(batch):
+
+    # A data tuple has the form:
+    # waveform, sample_rate, label, speaker_id, utterance_number
+
+    tensors, targets = [], []
+
+    # Gather in lists, and encode labels as indices
+    for waveform, label in batch:
+        tensors += [waveform]
+        targets += [label]
+
+    # Group the list of tensors into a batched tensor
+    tensors = pad_sequence(tensors)[:, 0, :]
+    targets = torch.stack(targets)
+
+    return tensors, targets
+
+
+def build_random_train_val_dataset(
+    data_root: str = "reid_skip_test",
+    data_type: str = "waveform",
+    batch_size: int = 32,
+    max_audio_sec: int = 5,
+    seed=0,
+):
+    sample_paths = glob(os.path.join(data_root, "*", "*"))
+    labels = [CLASSES[path.split("/")[-2]] for path in sample_paths]
+
+    dataset = {
+        "waveform": BaseDataset,
+    }
+    dataset_fn = dataset[data_type]
+
+    # using the train test split function
+    X_train, X_test, y_train, y_test = train_test_split(
+        sample_paths, labels, random_state=seed, test_size=0.2, shuffle=True
+    )
+
+    training_data = dataset_fn(X_train, y_train, max_audio_sec=max_audio_sec)
+    test_data = dataset_fn(X_test, y_test, max_audio_sec=max_audio_sec)
+
+    def worker_init_fn(worker_id):
+        os.sched_setaffinity(0, list(range(os.cpu_count())))
+
+    collate_fn = collate_fn_base if data_type == "waveform" else None
+
+    train_dataloader = DataLoader(
+        training_data,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=True,
+        collate_fn=collate_fn,
+        worker_init_fn=worker_init_fn,
+        drop_last=True,
+    )
+    test_dataloader = DataLoader(
+        test_data,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=True,
+        collate_fn=collate_fn,
+        worker_init_fn=worker_init_fn,
+        drop_last=True,
+    )
+    return (train_dataloader, test_dataloader), len(set(labels))
