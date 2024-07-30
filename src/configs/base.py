@@ -64,6 +64,12 @@ class BaseConfig(Base):
                 and value.endswith('"')
             ):
                 value_converted = value[1:-1]
+            elif value.startswith("(") or value.startswith("["):
+                value_converted = []
+                for temp in value.strip("(").strip(")").split(","):
+                    value_converted.append(decode_value(temp))
+                if value.startswith("("):
+                    value_converted = tuple(value_converted)
             else:
                 value_converted = value
             return value_converted
