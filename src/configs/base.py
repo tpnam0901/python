@@ -53,9 +53,11 @@ class BaseConfig(Base):
                 value_converted = float(value)
             elif value.isdigit():
                 value_converted = int(value)
+            elif value.replace("e", "").replace("-", "").isdigit():
+                value_converted = float(value)
             elif value == "True":
                 value_converted = True
-            elif value_converted == "False":
+            elif value == "False":
                 value_converted = False
             elif (
                 value.startswith("'")
@@ -90,7 +92,6 @@ class BaseConfig(Base):
                     value = [decode_value(x) for x in value]
                 else:
                     value = decode_value(value)
-
                 data_dict[key] = value
         for key, value in data_dict.items():
             setattr(self, key, value)
