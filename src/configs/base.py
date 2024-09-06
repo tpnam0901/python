@@ -51,6 +51,8 @@ class BaseConfig(Base):
             value_converted = None
             if "." in value and value.replace(".", "").isdigit():
                 value_converted = float(value)
+            elif "e" not in value and "-" in value:
+                value_converted = str(value)
             elif value.isdigit():
                 value_converted = int(value)
             elif value.replace("e", "").replace("-", "").isdigit():
