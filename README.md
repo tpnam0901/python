@@ -1,9 +1,8 @@
-
 <h1 align="center">
   <br>
   <a href=""><img src="./assets/logo.png" alt="logo" width="200"></a>
   <br>
-  NCoder0
+  PythonRepo
   <br>
 </h1>
 
@@ -36,7 +35,6 @@
 
 ## Emailware
 
-
 ## Credits
 
 This software uses the following open source packages:
@@ -46,15 +44,10 @@ This software uses the following open source packages:
 
 ## Related
 
-## Support
-
-<a href="https://www.buymeacoffee.com/ncoder0" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/purple_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
-
 ## You may also like...
 
 ## License
 
 ---
 
-> GitHub [@NCoder0](https://github.com/NCoder0) &nbsp;&middot;&nbsp;
-
+> GitHub [@tpnam0901](https://github.com/tpnam0901) &nbsp;&middot;&nbsp;
